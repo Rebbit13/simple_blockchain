@@ -4,12 +4,12 @@ type Block struct {
 	Hash     []byte
 	Data     []byte
 	PrevHash []byte
-	Nounse   int
+	Nonse    int
 }
 
-func NewBlock(data string, prevHash []byte) *Block {
-	block := &Block{Data: []byte(data), PrevHash: prevHash}
+func NewBlock(data []byte, prevHash []byte) *Block {
+	block := &Block{Data: data, PrevHash: prevHash}
 	proof := NewProof(block)
-	block.Nounse, block.Hash = proof.Run()
+	block.Nonse, block.Hash = proof.Run()
 	return block
 }
