@@ -19,7 +19,10 @@ func main() {
 
 	for _, block := range bc.GetBlocks() {
 		fmt.Printf("Data: %s\nHash: %x\nPrevious Hash: %x\n\n", block.Data, block.Hash, block.PrevHash)
-
+		//bl, _ := json.Marshal(block)
+		//bld := &blockchain.Block{}
+		//_ = json.Unmarshal(bl, bld)
+		//fmt.Printf("%x\n", bld.Hash)
 		proof := blockchain.NewProof(block)
 		fmt.Printf("PoW: %s\n\n", strconv.FormatBool(proof.Validate()))
 	}
