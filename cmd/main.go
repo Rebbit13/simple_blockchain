@@ -2,53 +2,68 @@ package main
 
 import (
 	"blockchain/internal/blockchain"
+	"blockchain/internal/keys"
 	"blockchain/internal/transaction"
+	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/google/uuid"
 	"log"
 	"strconv"
 	"time"
 )
 
-var n int64 = 0
+var n int = 0
 
-func randomTransaction() *transaction.Transaction {
+const prv1Compressed = "a44126a18978ff6f744b9d854eaf42457f1fc634e4d0bd9992f43ad1eb431625"
+
+func randomTransaction(output *transaction.Output, private *btcec.PrivateKey, address []byte) *transaction.Transaction {
 	n++
-	input := transaction.NewInput([]byte("0"), n, []byte("0"), []byte("0"))
-	output := transaction.NewOutput(n*100, []byte("0"))
+	input := transaction.NewInput([]byte("0"), output.ID, []byte("0"), private.PubKey().SerializeCompressed())
+	newOutput := transaction.NewOutput(100, address)
 	return transaction.NewTransaction(
-		[]byte(fmt.Sprintf("%d", n)),
+		[]byte(uuid.New().String()),
 		[]*transaction.Input{input},
-		[]*transaction.Output{output},
+		[]*transaction.Output{newOutput},
 	)
 }
 
 func main() {
-	privKey, err := btcec.NewPrivateKey()
+	s, err := hex.DecodeString(prv1Compressed)
+	if err != nil {
+		panic(err)
+	}
+	prv1, pub1 := btcec.PrivKeyFromBytes(s)
 	if err != nil {
 		log.Fatal(err)
 	}
-	pubKey := privKey.PubKey().SerializeCompressed()
-	pubKeyHash := btcutil.Hash160(pubKey)
+	fmt.Printf("FIRST: %x\n", pub1.SerializeCompressed())
 
-	addrPKH, err := btcutil.NewAddressPubKeyHash(pubKeyHash, &chaincfg.Params{})
+	prv2, pub2 := keys.GetOrCreateKeyPair()
+	fmt.Printf("SECOND: %x\n", pub2.SerializeCompressed())
 
-	addr := addrPKH.EncodeAddress()
-	fmt.Println(pubKey)
-	fmt.Println(addr)
-
-	bc := blockchain.NewChain()
+	bc, err := blockchain.NewChain()
+	if err != nil {
+		log.Fatal(err)
+	}
 	go bc.Run()
 
 	for i := 0; i < 30; i++ {
-		tr := randomTransaction()
-		bc.AddToMemePool(tr)
+		time.Sleep(3 * time.Second)
+		out := bc.UTXO[0]
+		tr := &transaction.Transaction{}
+		if i%2 == 0 {
+			tr = randomTransaction(out, prv2, pub1.SerializeCompressed())
+		} else {
+			tr = randomTransaction(out, prv1, pub2.SerializeCompressed())
+		}
+		err = bc.AddToMemePool(tr)
+		if err != nil {
+			log.Println(err)
+		}
 		log.Print("ADD TRANSACTION")
-		time.Sleep(1 * time.Second)
 	}
-	time.Sleep(20 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	for _, block := range bc.GetBlocks() {
 		fmt.Printf("Data: %s\nHash: %x\nPrevious Hash: %x\n\n", block.Data, block.Hash, block.PrevHash)
