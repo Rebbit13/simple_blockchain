@@ -89,12 +89,34 @@ func (c *Chain) deleteUTXO(input *transaction.Input) {
 	}
 }
 
-func (c *Chain) verifyTransaction(transaction *transaction.Transaction) bool {
-	for _, input := range transaction.Inputs {
+func (c *Chain) getOutsAmount(outs []*transaction.Output) int64 {
+	var amount int64 = 0
+	for _, out := range outs {
+		amount += out.Value
+	}
+	return amount
+}
+
+// check:
+// if Transaction's each Input has existing UTXO,
+// and Output.Address the same as Input.PubKey
+// if outputs amount equal inputs amount
+// if Input.Sign valid
+func (c *Chain) verifyTransaction(trx *transaction.Transaction) bool {
+	baseOuts := []*transaction.Output{}
+	for _, input := range trx.Inputs {
 		UTXO := c.findUTXOByInput(input)
 		if UTXO == nil {
 			return false
 		}
+		if fmt.Sprintf("%x", UTXO.Address) != fmt.Sprintf("%x", input.PubKey) {
+			return false
+		}
+
+		baseOuts = append(baseOuts, UTXO)
+	}
+	if c.getOutsAmount(baseOuts) != c.getOutsAmount(trx.Output) {
+		return false
 	}
 	return true
 }

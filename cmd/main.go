@@ -19,8 +19,12 @@ const prv1Compressed = "a44126a18978ff6f744b9d854eaf42457f1fc634e4d0bd9992f43ad1
 
 func randomTransaction(output *transaction.Output, private *btcec.PrivateKey, address []byte) *transaction.Transaction {
 	n++
-	input := transaction.NewInput([]byte("0"), output.ID, []byte("0"), private.PubKey().SerializeCompressed())
-	newOutput := transaction.NewOutput(100, address)
+	var value int64 = 100
+	if n == 6 {
+		value = 80
+	}
+	input := transaction.NewInput([]byte("0"), output.ID, private)
+	newOutput := transaction.NewOutput(value, address)
 	return transaction.NewTransaction(
 		[]byte(uuid.New().String()),
 		[]*transaction.Input{input},
@@ -60,8 +64,9 @@ func main() {
 		err = bc.AddToMemePool(tr)
 		if err != nil {
 			log.Println(err)
+		} else {
+			log.Print("ADD TRANSACTION")
 		}
-		log.Print("ADD TRANSACTION")
 	}
 	time.Sleep(10 * time.Second)
 
